@@ -12,15 +12,59 @@ void DUMMY_CODE(Targs &&... /* unused */) {}
 
 using namespace std;
 
-StreamReassembler::StreamReassembler(const size_t capacity) : _output(capacity), _capacity(capacity) {}
+StreamReassembler::StreamReassembler(const size_t capacity) :
+    _buf(deque<char>(capacity, '\0')),
+    _flags(capacity, false),
+    _is_eof(false),
+    _eof_idx(0),
+    _unassembled(0),
+    _output(capacity),
+    _capacity(capacity) {}
 
 //! \details This function accepts a substring (aka a segment) of bytes,
 //! possibly out-of-order, from the logical stream, and assembles any newly
 //! contiguous substrings and writes them into the output stream in order.
 void StreamReassembler::push_substring(const string &data, const size_t index, const bool eof) {
-    DUMMY_CODE(data, index, eof);
+    const size_t _first_unassembled = _output.bytes_written();
+    const size_t _start = max(_first_unassembled, index);
+    const size_t _end = min(index+data.length(), _first_unassembled + _output.remaining_capacity());
+
+    for(size_t i = _start; i < _end; i++) {
+        const size_t idx = i-_first_unassembled;
+        if(!_flags[idx]) {
+            _buf[idx] = data[i-index];
+            _flags[idx] = true;
+            _unassembled ++;
+        }
+    }
+
+    std::string to_write = "";
+    while(_flags.front()) {
+        _flags.pop_front();
+        to_write += _buf.front();
+        _buf.pop_front();
+
+        _flags.push_back(false);
+        _buf.push_back('\0');
+    }
+
+    _unassembled -= to_write.length();
+    _output.write(to_write);
+
+    if(eof) {
+        _is_eof = true;
+        _eof_idx = index + data.length();
+    }
+
+    if(_is_eof && _eof_idx == _output.bytes_written()) {
+        _output.end_input();
+    }
 }
 
-size_t StreamReassembler::unassembled_bytes() const { return {}; }
+size_t StreamReassembler::unassembled_bytes() const {
+    return _unassembled;
+}
 
-bool StreamReassembler::empty() const { return {}; }
+bool StreamReassembler::empty() const {
+    return unassembled_bytes() == 0;
+}
