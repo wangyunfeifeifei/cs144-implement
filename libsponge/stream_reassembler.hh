@@ -4,19 +4,19 @@
 #include "byte_stream.hh"
 
 #include <cstdint>
-#include <string>
 #include <deque>
+#include <string>
 
 //! \brief A class that assembles a series of excerpts from a byte stream (possibly out of order,
 //! possibly overlapping) into an in-order byte stream.
 class StreamReassembler {
   private:
     // Your code here -- add private members as necessary.
-    std::deque<char> _buf;
-    std::deque<bool> _flags;
-    size_t _is_eof;
-    size_t _eof_idx;
-    size_t _unassembled;
+    std::deque<char> _buf;    // 存放待装配字符
+    std::deque<bool> _flags;  // 判定待装配区域已写入字符
+    size_t _is_eof;           // 判定是否传入eof
+    size_t _eof_idx;          // 判定eof需要达到的索引
+    size_t _unassembled;      // 未装配字节数，说明文档的红色部分
 
     ByteStream _output;  //!< The reassembled in-order byte stream
     size_t _capacity;    //!< The maximum number of bytes
